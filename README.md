@@ -13,6 +13,7 @@
 **[ THE UNIVERSAL DATA SOCKET ]**
 This is not a closed simulation; it is an open metabolic engine. Feed the `EXTERNAL_DATA_STREAM` any high-entropy data—raw text hashes, market ticks, noise. Watch a unique digital society spontaneously self-assemble, build a symbiotic web, and evolve entirely from the raw entropy of your inputs.
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](ССЫЛКА_НА_ТВОЙ_КОЛАБ)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)]
+(https://colab.research.google.com/drive/1Trb97RxvEs59nHzivqJOsQG9HIO-96cm?usp=sharing)
 
 *Run the physics. Watch the emergence.*
