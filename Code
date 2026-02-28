@@ -1,0 +1,280 @@
+
+# ============================================================
+# ORGANISM 8: PRIME ATTRACTOR MORPHODYNAMICS (v8.2 - MONOLITH)
+# ============================================================
+
+# EXTERNAL DATA SOCKET
+# Insert any numeric array here (e.g., text hashes, market data, etc.).
+# If left empty, the swarm feeds on fundamental continuous chaos.
+EXTERNAL_DATA_STREAM = [] 
+
+import math
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from IPython.display import HTML
+
+# ------------------------------------------------------------
+# 1. CORE PHYSICS & UTILITIES
+# ------------------------------------------------------------
+def ema(old, new, alpha): 
+    return alpha * old + (1 - alpha) * new
+
+def phase(x, K): 
+    return (x * K) % 1.0
+
+def circular_coherence(phases):
+    if not phases: return 0.5
+    sc = sum(math.cos(2 * math.pi * p) for p in phases) / len(phases)
+    ss = sum(math.sin(2 * math.pi * p) for p in phases) / len(phases)
+    return math.sqrt(sc * sc + ss * ss)
+
+def divisor_count(n):
+    if n < 1: return 1
+    count = 0
+    for i in range(1, int(math.sqrt(n)) + 1):
+        if n % i == 0: count += 2 if i != n // i else 1
+    return count
+
+class PrimePotentialField:
+    def __init__(self, scale=10.0):
+        self.scale = scale
+        
+    def potential(self, r):
+        # Nested gravity: local prime structure + global scale resonance
+        n_local = max(1, int(abs(r) * self.scale))
+        n_global = max(1, int(abs(r) * self.scale * 0.1))
+        return math.log(divisor_count(n_local) + 1) + math.log(divisor_count(n_global) + 1)
+        
+    def gradient(self, r, eps=1e-3):
+        return (self.potential(r + eps) - self.potential(r - eps)) / (2 * eps)
+
+class PrimeVortexPhysics:
+    def __init__(self, gamma=1.5):
+        self.field = PrimePotentialField()
+        self.gamma = gamma
+
+    def step(self, r, pr, L, dt=0.01):
+        dV = self.field.gradient(r)
+        
+        # Radial force: gradient of silence + centrifugal barrier
+        radial_force = -self.gamma * dV + (L**2) / (r**3 + 1e-6)
+        pr += radial_force * dt
+        
+        # Inertia dampening (friction) allowing agents to settle on prime orbits
+        pr *= 0.95 
+        
+        r += pr * dt
+        
+        # Angular velocity (conservation of momentum)
+        omega = L / (r**2 + 1e-6)
+        return r, pr, omega
+
+# ------------------------------------------------------------
+# 2. SOVEREIGN IDENTITY & AGENTS
+# ------------------------------------------------------------
+class InvariantCell:
+    def __init__(self, K):
+        self.K = K
+        self.fast = 0.5
+        self.slow = 0.5
+        
+    def update(self, values):
+        phases = [phase(v, self.K) for v in values]
+        C = circular_coherence(phases)
+        self.fast = ema(self.fast, C, 0.9)
+        self.slow = ema(self.slow, C, 0.995)
+        return C
+        
+    def drift(self):
+        return abs(self.fast - self.slow)
+
+class Agent:
+    def __init__(self, talent=0.0, fear=0.0, lineage=0):
+        self.lineage = lineage 
+        self.cell = InvariantCell(random.uniform(1.2, 2.8))
+        self.inner_bias = 0.5
+        self.tension = 0.0
+        self.talent = talent
+        self.fear = fear
+        
+        # Generational blur: prevent simultaneous mass extinction
+        self.life_time = random.randint(0, 1000) if lineage == 0 else 0
+        self.max_age = random.randint(1200, 2500)
+
+        # Novices spawn on the periphery, experienced lineage spawns deeper
+        self.r = max(2.0, 20.0 / (lineage + 1) + random.uniform(-1, 1))
+        self.pr = 0.0
+        self.theta = random.random() * 2 * math.pi
+        self.L = random.uniform(0.3, 0.7) 
+
+    def perception(self, world, beta):
+        weights = [math.exp(-beta * abs(v - self.cell.fast)) for v in world]
+        total = sum(weights) + 1e-9
+        return [(v * w) / total for v, w in zip(world, weights)]
+
+    def update(self, world, beta, physics):
+        self.life_time += 1
+        
+        # Cognition
+        seen = self.perception(world, beta)
+        C = self.cell.update(seen)
+        self.inner_bias = ema(self.inner_bias, self.cell.fast, 0.999)
+        
+        conflict = abs(self.cell.fast - self.inner_bias)
+        self.tension = ema(self.tension, conflict + self.cell.drift(), 0.98)
+
+        # Parameter Evolution (Adaptation)
+        if self.tension > 0.25:
+            self.cell.K += 0.1 * (self.cell.fast - self.inner_bias)
+            self.talent += 0.005
+            
+        if self.tension > 0.6: 
+            self.fear += 0.02
+        else: 
+            self.fear *= 0.98
+
+        # Toroidal Physics
+        effective_L = self.L * math.exp(-self.lineage * 0.1)
+        self.r, self.pr, omega = physics.step(self.r, self.pr, effective_L, dt=0.05)
+        self.theta += omega
+        
+        # Clamping boundaries
+        self.cell.K = max(0.5, min(13.0, self.cell.K))
+        self.r = max(0.5, min(24.5, self.r)) 
+
+        # Mortality check
+        if self.fear > 1.2 or self.life_time > self.max_age: return "death"
+        return "alive"
+
+# ------------------------------------------------------------
+# 3. GENERATIONAL FLOW SYSTEM
+# ------------------------------------------------------------
+class GenerationalFlowSystem:
+    def __init__(self, n, data_stream):
+        self.physics = PrimeVortexPhysics()
+        self.agents = [Agent() for _ in range(n)]
+        self.beta = 3.0
+        self.data_stream = data_stream
+        self.stream_idx = 0
+        self.world_state = [random.random() for _ in range(5)]
+
+    def feed_world(self):
+        if self.data_stream:
+            val = self.data_stream[self.stream_idx % len(self.data_stream)]
+            self.stream_idx += 1
+            return (val % 1.0)
+        return random.random()
+
+    def step(self):
+        nxt = []
+        for a in self.agents:
+            state = a.update(self.world_state, self.beta, self.physics)
+            if state == "death":
+                # Reincarnation: Passing the 'talent' spark to the next cycle
+                nxt.append(Agent(talent=a.talent * 0.6, lineage=a.lineage + 1))
+            else:
+                nxt.append(a)
+        self.agents = nxt
+        
+        # World state dynamically shifts following the average resonance
+        avg_K = sum(a.cell.K for a in self.agents) / len(self.agents)
+        external_pulse = self.feed_world()
+        self.world_state = [ema(v, math.sin(avg_K * i) + external_pulse*0.1, 0.99) for i, v in enumerate(self.world_state)]
+
+# ------------------------------------------------------------
+# 4. VISUALIZATION & GIF GENERATION (TIMELAPSE)
+# ------------------------------------------------------------
+# 4. 3D VISUALIZATION & GIF GENERATION (TIMELAPSE)
+# ------------------------------------------------------------
+from mpl_toolkits.mplot3d import Axes3D # Импорт для 3D графики
+
+sim = GenerationalFlowSystem(70, EXTERNAL_DATA_STREAM)
+frames_data = []
+
+print("Simulating 3D morphodynamic emergence...")
+# Делаем 8000 шагов (достаточно для эволюции и плавной гифки)
+for t in range(8000):
+    sim.step()
+    
+    if t % 40 == 0: 
+        xs, ys, zs = [], [], []
+        colors, sizes = [], []
+        
+        # R_major - радиус центрального кольца системы
+        R_major = 15.0 
+
+        for a in sim.agents:
+            # МАГИЯ 3D: Внутреннее состояние (фаза) изгибает пространство агента
+            phi = a.cell.fast * 2 * math.pi
+            theta = a.theta
+            r = a.r
+            
+            # Уравнения параметрического Тора:
+            # Простые числа (r) образуют вложенные 3D-трубы
+            x = (R_major + r * math.cos(phi)) * math.cos(theta)
+            y = (R_major + r * math.cos(phi)) * math.sin(theta)
+            z = r * math.sin(phi)
+            
+            xs.append(x)
+            ys.append(y)
+            zs.append(z)
+            colors.append(a.lineage)
+            sizes.append(15 + a.talent * 200)
+            
+        # 3D Симбиотическая Паутина
+        lines_x, lines_y, lines_z = [], [], []
+        for i in range(len(sim.agents)):
+            for j in range(i+1, len(sim.agents)):
+                if abs(sim.agents[i].cell.K - sim.agents[j].cell.K) < 0.25:
+                    lines_x.extend([xs[i], xs[j], np.nan])
+                    lines_y.extend([ys[i], ys[j], np.nan])
+                    lines_z.extend([zs[i], zs[j], np.nan])
+                    
+        frames_data.append((xs, ys, zs, colors, sizes, lines_x, lines_y, lines_z))
+
+print("Rendering 3D GIF animation...")
+fig = plt.figure(figsize=(10, 10), facecolor='white')
+ax = fig.add_subplot(111, projection='3d')
+ax.set_facecolor('white')
+
+# Убираем все сетки, оси и координаты. Оставляем чистую пустоту.
+ax.grid(False)
+ax.axis('off')
+
+# Фиксируем границы камеры, чтобы Тор не дергался
+limit = 45
+ax.set_xlim(-limit, limit)
+ax.set_ylim(-limit, limit)
+ax.set_zlim(-limit, limit)
+
+x0, y0, z0, c0, s0, lx0, ly0, lz0 = frames_data[0]
+network_lines, = ax.plot(lx0, ly0, lz0, color='#3366cc', linewidth=0.5, alpha=0.3)
+scatter = ax.scatter(x0, y0, z0, c=c0, s=s0, cmap='viridis', alpha=0.9, vmin=0, vmax=12)
+
+def update(frame):
+    xs, ys, zs, colors, sizes, lx, ly, lz = frames_data[frame]
+    
+    # Обновление 3D координат
+    scatter._offsets3d = (np.array(xs), np.array(ys), np.array(zs))
+    scatter.set_array(np.array(colors))
+    
+    # ИСПРАВЛЕНИЕ: Оборачиваем размеры (sizes) в математический массив numpy
+    scatter.set_sizes(np.array(sizes))
+    
+    network_lines.set_data(np.array(lx), np.array(ly))
+    network_lines.set_3d_properties(np.array(lz))
+    
+    # Плавный облет камеры вокруг Тора
+    ax.view_init(elev=20 + 10 * math.sin(frame * 0.05), azim=frame * 1.5)
+    
+    ax.set_title(f"Organism 8: 3D Prime Resonance | Iteration: {frame*40}", color='black', pad=0, fontsize=12)
+    return scatter, network_lines
+
+ani = FuncAnimation(fig, update, frames=len(frames_data), interval=50, blit=False)
+
+gif_path = "organism_8_3D_swarm.gif"
+ani.save(gif_path, writer='pillow', fps=20)
+print(f"Готово! Сохранено как {gif_path}.")
+HTML(ani.to_jshtml())
