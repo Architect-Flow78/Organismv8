@@ -184,35 +184,38 @@ class GenerationalFlowSystem:
         self.world_state = [ema(v, math.sin(avg_K * i) + external_pulse*0.1, 0.99) for i, v in enumerate(self.world_state)]
 
 # ------------------------------------------------------------
-# 4. VISUALIZATION & GIF GENERATION (TIMELAPSE)
 # ------------------------------------------------------------
-# 4. 3D VISUALIZATION & GIF GENERATION (TIMELAPSE)
+# 4. 3D VISUALIZATION & GIF GENERATION (TIMELAPSE & ZOOMED)
 # ------------------------------------------------------------
-from mpl_toolkits.mplot3d import Axes3D # Импорт для 3D графики
+from mpl_toolkits.mplot3d import Axes3D # Import for 3D plotting
 
 sim = GenerationalFlowSystem(70, EXTERNAL_DATA_STREAM)
 frames_data = []
 
-print("Simulating 3D morphodynamic emergence...")
-# Делаем 8000 шагов (достаточно для эволюции и плавной гифки)
-for t in range(8000):
+# SIMULATION PARAMETERS
+steps_count = 8000 # Enough steps for evolution and smooth GIF
+snapshot_interval = 40 # Snapshot every 40 steps for timelapse
+
+print(f"Simulating {steps_count} steps of 3D morphodynamic emergence...")
+for t in range(steps_count):
     sim.step()
     
-    if t % 40 == 0: 
+    # Snapshot logic for timelapse
+    if t % snapshot_interval == 0: 
         xs, ys, zs = [], [], []
         colors, sizes = [], []
         
-        # R_major - радиус центрального кольца системы
+        # R_major - major radius of the system's central ring
         R_major = 15.0 
 
         for a in sim.agents:
-            # МАГИЯ 3D: Внутреннее состояние (фаза) изгибает пространство агента
+            # 3D MAGIC: Inner cognitive state (phase) twists the agent's position
             phi = a.cell.fast * 2 * math.pi
             theta = a.theta
             r = a.r
             
-            # Уравнения параметрического Тора:
-            # Простые числа (r) образуют вложенные 3D-трубы
+            # Parametric Torus Equations:
+            # Prime topology (r) forms nested 3D tubes
             x = (R_major + r * math.cos(phi)) * math.cos(theta)
             y = (R_major + r * math.cos(phi)) * math.sin(theta)
             z = r * math.sin(phi)
@@ -221,12 +224,14 @@ for t in range(8000):
             ys.append(y)
             zs.append(z)
             colors.append(a.lineage)
+            # Talentspark affects particle size
             sizes.append(15 + a.talent * 200)
             
-        # 3D Симбиотическая Паутина
+        # 3D Symbiotic Resonance Web
         lines_x, lines_y, lines_z = [], [], []
         for i in range(len(sim.agents)):
             for j in range(i+1, len(sim.agents)):
+                # Draw symbiotic threads if Invariants (phases) are in resonance
                 if abs(sim.agents[i].cell.K - sim.agents[j].cell.K) < 0.25:
                     lines_x.extend([xs[i], xs[j], np.nan])
                     lines_y.extend([ys[i], ys[j], np.nan])
@@ -239,42 +244,49 @@ fig = plt.figure(figsize=(10, 10), facecolor='white')
 ax = fig.add_subplot(111, projection='3d')
 ax.set_facecolor('white')
 
-# Убираем все сетки, оси и координаты. Оставляем чистую пустоту.
+# Remove grids, axes, and coordinates for clean aesthetic
 ax.grid(False)
 ax.axis('off')
 
-# Фиксируем границы камеры, чтобы Тор не дергался
-limit = 45
+# ZOOM FIX: Set tighter camera boundaries for larger structure
+# limit = 45 was too far, limit = 22 brings the torus close to screen edges
+limit = 22 
 ax.set_xlim(-limit, limit)
 ax.set_ylim(-limit, limit)
 ax.set_zlim(-limit, limit)
 
+# Initial frame data setup
 x0, y0, z0, c0, s0, lx0, ly0, lz0 = frames_data[0]
-network_lines, = ax.plot(lx0, ly0, lz0, color='#3366cc', linewidth=0.5, alpha=0.3)
+network_lines, = ax.plot(np.array(lx0), np.array(ly0), np.array(lz0), color='#3366cc', linewidth=0.5, alpha=0.3)
 scatter = ax.scatter(x0, y0, z0, c=c0, s=s0, cmap='viridis', alpha=0.9, vmin=0, vmax=12)
 
+# Animation Update Function
 def update(frame):
     xs, ys, zs, colors, sizes, lx, ly, lz = frames_data[frame]
     
-    # Обновление 3D координат
+    # Update 3D coordinates and arrays
     scatter._offsets3d = (np.array(xs), np.array(ys), np.array(zs))
     scatter.set_array(np.array(colors))
+    scatter.set_sizes(np.array(sizes)) # Correcting integer conversion error
     
-    # ИСПРАВЛЕНИЕ: Оборачиваем размеры (sizes) в математический массив numpy
-    scatter.set_sizes(np.array(sizes))
-    
+    # Update network lines coordinates
     network_lines.set_data(np.array(lx), np.array(ly))
     network_lines.set_3d_properties(np.array(lz))
     
-    # Плавный облет камеры вокруг Тора
+    # Smooth camera flight around the Torus
+    # azim rotates horizontally, elev swings slightly vertically
     ax.view_init(elev=20 + 10 * math.sin(frame * 0.05), azim=frame * 1.5)
     
-    ax.set_title(f"Organism 8: 3D Prime Resonance | Iteration: {frame*40}", color='black', pad=0, fontsize=12)
+    ax.set_title(f"Organism 8: 3D Prime Resonance | Iteration: {frame*snapshot_interval}", color='black', pad=0, fontsize=12)
     return scatter, network_lines
 
+# Create Animation object
 ani = FuncAnimation(fig, update, frames=len(frames_data), interval=50, blit=False)
 
+# Save to Colab environment
 gif_path = "organism_8_3D_swarm.gif"
 ani.save(gif_path, writer='pillow', fps=20)
-print(f"Готово! Сохранено как {gif_path}.")
+print(f"Done! Saved as {gif_path}. You can download it now.")
+
+# Embed and display in notebook
 HTML(ani.to_jshtml())
